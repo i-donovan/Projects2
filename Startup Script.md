@@ -1,24 +1,45 @@
 ```powershell
-# This script shows what starts automatically on your computer
+# User and Disk Management Script
+# Note: Run this script as Administrator
 
-# Set where to save the file (your Desktop)
-$outputFile = "$env:USERPROFILE\Desktop\StartupInfo.txt"
+# ===================================
+# 1. Display All Local User Accounts
+# ===================================
+Write-Host "`n========== LOCAL USER ACCOUNTS ==========" -ForegroundColor Cyan
+Write-Host "Listing all local users on this system:`n" -ForegroundColor Yellow
 
-# Write a header to the file
-"My Startup Information" | Out-File $outputFile
-"" | Out-File $outputFile -Append
+# Get all local users and display their names and status
+Get-LocalUser | Format-Table Name, Enabled, Description -AutoSize
 
-# Get all services that start automatically
-"AUTOMATIC SERVICES:" | Out-File $outputFile -Append
-Get-Service | Where-Object {$_.StartType -eq 'Automatic'} | Out-File $outputFile -Append
+# ===================================
+# 2. Show All Drives and Free Space
+# ===================================
+Write-Host "`n========== DISK DRIVE INFORMATION ==========" -ForegroundColor Cyan
+Write-Host "Showing all drives and their free space:`n" -ForegroundColor Yellow
 
-# Add a blank line for readability
-"" | Out-File $outputFile -Append
+# Get all drives and display relevant information
+Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | 
+    Select-Object Name, 
+                  @{Name="Used (GB)"; Expression={[math]::Round($_.Used/1GB, 2)}},
+                  @{Name="Free (GB)"; Expression={[math]::Round($_.Free/1GB, 2)}},
+                  @{Name="Total (GB)"; Expression={[math]::Round(($_.Used + $_.Free)/1GB, 2)}} |
+    Format-Table -AutoSize
 
-# Get startup apps from the Startup folder
-"STARTUP APPS:" | Out-File $outputFile -Append
-$startupFolder = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
-Get-ChildItem $startupFolder | Out-File $outputFile -Append
+# ===================================
+# 3. Create New Local User
+# ===================================
+Write-Host "`n========== CREATE NEW USER ==========" -ForegroundColor Cyan
+Write-Host "Creating a new local user account named 'TestUser'`n" -ForegroundColor Yellow
 
-# Tell the user we're done
-Write-Host "Done! Check your Desktop for StartupInfo.txt"
+# Prompt for a secure password
+$Password = Read-Host "Enter password for TestUser" -AsSecureString
+
+# Create the new user
+try {
+    New-LocalUser "TestUser" -Password $Password -FullName "Test User" -Description "Test account created by script"
+    Write-Host "`nSuccess! User 'TestUser' has been created." -ForegroundColor Green
+} catch {
+    Write-Host "`nError creating user: $_" -ForegroundColor Red
+}
+
+Write-Host "`n========== SCRIPT COMPLETE ==========" -ForegroundColor Cyan
